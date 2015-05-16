@@ -145,7 +145,7 @@ public class GerritRestClientTest {
         GerritRestApi gerritClient = getGerritApiWithJettyHost();
         InputStream commitMessageHook = gerritClient.tools().getCommitMessageHook();
         String result = CharStreams.toString(new InputStreamReader(commitMessageHook, Charsets.UTF_8));
-        Truth.assertThat(result).is("dummy-commit-msg-hook\n");
+        Truth.assertThat(result).is("dummy-commit-msg-hook");
     }
 
     @Test(expectedExceptions = HttpStatusException.class)

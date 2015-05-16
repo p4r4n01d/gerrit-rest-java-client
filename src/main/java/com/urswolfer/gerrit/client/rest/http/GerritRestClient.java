@@ -337,6 +337,7 @@ public class GerritRestClient {
 
     private JsonElement parseResponse(InputStream response) throws IOException {
         Reader reader = new InputStreamReader(response, Consts.UTF_8);
+        reader.skip(5);
         try {
             return new JsonParser().parse(reader);
         } catch (JsonSyntaxException jse) {

@@ -17,6 +17,7 @@
 package com.urswolfer.gerrit.client.rest.http.common;
 
 import com.google.gson.*;
+import com.google.gson.stream.JsonReader;
 import com.urswolfer.gerrit.client.rest.gson.DateDeserializer;
 import com.urswolfer.gerrit.client.rest.gson.DateSerializer;
 
@@ -32,7 +33,9 @@ public abstract class AbstractParserTest {
     protected JsonElement getJsonElement(String resourceName) throws Exception {
         URL url = this.getClass().getResource(resourceName);
         File file = new File(url.toURI());
-        return new JsonParser().parse(new FileReader(file));
+        FileReader fr = new FileReader(file);
+        fr.skip(5); // Skip junk at beginning of each file
+        return new JsonParser().parse(new JsonReader(fr));
     }
 
     protected static Gson getGson() {
