@@ -16,6 +16,9 @@
 
 package com.urswolfer.gerrit.client.rest.http;
 
+import com.squareup.okhttp.OkHttpClient;
+import com.squareup.okhttp.Request;
+import com.squareup.okhttp.Response;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.impl.client.HttpClientBuilder;
@@ -32,5 +35,9 @@ public class HttpRequestExecutor {
 
     public HttpResponse execute(HttpClientBuilder client, HttpRequestBase method, HttpContext context) throws IOException {
         return client.build().execute(method, context);
+    }
+
+    public Response execute(OkHttpClient client, Request.Builder builder) throws IOException {
+        return client.newCall(builder.build()).execute();
     }
 }
