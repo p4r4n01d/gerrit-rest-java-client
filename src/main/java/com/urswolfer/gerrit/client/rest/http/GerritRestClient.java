@@ -23,6 +23,7 @@ import com.google.common.collect.Sets;
 import com.google.common.io.CharStreams;
 import com.google.gerrit.extensions.restapi.RestApiException;
 import com.google.gson.*;
+import com.squareup.okhttp.Authenticator;
 import com.squareup.okhttp.*;
 import com.urswolfer.gerrit.client.rest.GerritAuthData;
 import com.urswolfer.gerrit.client.rest.Version;
@@ -37,21 +38,14 @@ import org.apache.http.impl.auth.BasicScheme;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
-import org.apache.http.impl.client.LaxRedirectStrategy;
 import org.apache.http.protocol.HttpContext;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.net.CookieManager;
-import java.net.CookiePolicy;
-import java.net.CookieStore;
-import java.net.HttpCookie;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Set;
+import java.net.*;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
@@ -267,7 +261,7 @@ public class GerritRestClient {
         });
     }
 
-    private HttpClientBuilder getHttpClient(HttpContext httpContext) {
+    private OkHttpClient getHttpClient(HttpContext httpContext) {
         HttpClientBuilder client = HttpClients.custom();
 
         client.useSystemProperties(); // see also: com.intellij.util.net.ssl.CertificateManager
@@ -275,7 +269,6 @@ public class GerritRestClient {
         OkHttpClient c = new OkHttpClient();
         c.setFollowRedirects(true);
         // we need to get redirected result after login (which is done with POST) for extracting xGerritAuth
-        client.setRedirectStrategy(new LaxRedirectStrategy());
 
         c.setCookieHandler(cookieManager);
 
@@ -295,14 +288,15 @@ public class GerritRestClient {
             client.addInterceptorFirst(new PreemptiveAuthHttpRequestInterceptor(authData));
         }
 
-        client.addInterceptorLast(new UserAgentHttpRequestInterceptor());
+        c.networkInterceptors().add(new UserAgentInterceptor());
+        c.setAuthenticator(new MainAuthenticator(authData));
 
         for (HttpClientBuilderExtension httpClientBuilderExtension : httpClientBuilderExtensions) {
             client = httpClientBuilderExtension.extend(client, authData);
             credentialsProvider = httpClientBuilderExtension.extendCredentialProvider(client, credentialsProvider, authData);
         }
 
-        return client;
+        return c;
     }
 
     /**
@@ -384,13 +378,69 @@ public class GerritRestClient {
         }
     }
 
-    private static class UserAgentHttpRequestInterceptor implements HttpRequestInterceptor {
 
-        public void process(final HttpRequest request, final HttpContext context) throws HttpException, IOException {
-            Header existingUserAgent = request.getFirstHeader(HttpHeaders.USER_AGENT);
+
+    // OkHttp Basic authentication
+    private static class MainAuthenticator implements Authenticator {
+
+        private GerritAuthData authData;
+
+        public MainAuthenticator(GerritAuthData authData) {
+            this.authData = authData;
+        }
+
+        @Override
+        public Request authenticate(Proxy proxy, Response response) throws IOException {
+            List<Challenge> challenges = response.challenges();
+            Authenticator authentator = getAuthenticator(challenges);
+            if (authentator != null) {
+                return authentator.authenticate(proxy, response);
+            } else {
+                return null;
+            }
+        }
+
+        @Override
+        public Request authenticateProxy(Proxy proxy, Response response) throws IOException {
+            List<Challenge> challenges = response.challenges();
+            Authenticator authentator = getAuthenticator(challenges);
+            if (authentator != null) {
+                return authentator.authenticateProxy(proxy, response);
+            } else {
+                return null;
+            }
+        }
+
+        private Authenticator getAuthenticator(List<Challenge> challenges) {
+            Authenticator authentator = null;
+            Iterator iterator = challenges.iterator();
+            while (iterator.hasNext() && authentator != null) {
+                Challenge challenge = (Challenge) iterator.next();
+                if ("Basic".equals(challenge.getScheme())) {
+                    authentator = new BasicAuthenticator(authData);
+                } else if ("Digest".equals(challenge.getScheme())) {
+                    authentator = new DigestAuthenticator(authData);
+                }
+            }
+            return authentator;
+        }
+    }
+
+
+
+    // http://stackoverflow.com/questions/26509107/how-to-specify-a-default-user-agent-for-okhttp-2-x-requests
+    private static class UserAgentInterceptor implements Interceptor {
+
+        @Override
+        public Response intercept(Chain chain) throws IOException {
+            Request originalRequest = chain.request();
             String userAgent = String.format("gerrit-rest-java-client/%s", Version.get());
-            userAgent += " using " + existingUserAgent.getValue();
-            request.setHeader(HttpHeaders.USER_AGENT, userAgent);
+            userAgent += " using " + originalRequest.header("User-Agent");
+            Request requestWithUserAgent = originalRequest.newBuilder()
+                .removeHeader("User-Agent")
+                .addHeader("User-Agent", userAgent)
+                .build();
+            return chain.proceed(requestWithUserAgent);
         }
     }
 
