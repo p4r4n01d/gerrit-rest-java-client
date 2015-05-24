@@ -136,7 +136,7 @@ public class GerritRestClient {
     }
 
     public Response doRest(String path, String requestBody, HttpVerb verb) throws IOException, RestApiException {
-        OkHttpClient client = new OkHttpClient();
+        OkHttpClient client = getHttpClient();
 
         Optional<String> gerritAuthOptional = updateGerritAuthWhenRequired(client);
 
@@ -148,20 +148,19 @@ public class GerritRestClient {
         }
         uri += path;
 
-        Request.Builder builder = new Request.Builder()
-            .url(uri)
-            .addHeader("Accept", MEDIA_TYPE_JSON.toString());
+        Request.Builder builder = new Request.Builder().url(uri).addHeader("Accept", MEDIA_TYPE_JSON.toString());
+        RequestBody requestContent = (requestBody != null) ? RequestBody.create(MEDIA_TYPE_JSON, requestBody) : null;
 
         if (verb == HttpVerb.GET) {
             builder = builder.get();
         } else if (verb == HttpVerb.DELETE) {
             builder = builder.delete();
+        } else if (verb == HttpVerb.POST) {
+            builder = builder.post(requestContent);
+        } else if (verb == HttpVerb.PUT) {
+            builder = builder.put(requestContent);
         } else {
-            if (requestBody == null) {
-                builder.method(verb.toString(), null);
-            } else {
-                builder.method(verb.toString(), RequestBody.create(MEDIA_TYPE_JSON, requestBody));
-            }
+            throw new IllegalStateException("Unknown or unsupported HttpVerb method: " + verb.toString());
         }
 
         if (gerritAuthOptional.isPresent()) {
@@ -261,10 +260,11 @@ public class GerritRestClient {
         });
     }
 
-    private OkHttpClient getHttpClient(HttpContext httpContext) {
+    private OkHttpClient getHttpClient() {
+        /*
         HttpClientBuilder client = HttpClients.custom();
-
         client.useSystemProperties(); // see also: com.intellij.util.net.ssl.CertificateManager
+        */
 
         OkHttpClient c = new OkHttpClient();
         c.setFollowRedirects(true);
@@ -276,9 +276,9 @@ public class GerritRestClient {
         c.setReadTimeout(CONNECTION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
         c.setWriteTimeout(CONNECTION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
 
+        /*
         CredentialsProvider credentialsProvider = getCredentialsProvider();
         client.setDefaultCredentialsProvider(credentialsProvider);
-
         if (authData.isLoginAndPasswordAvailable()) {
             credentialsProvider.setCredentials(AuthScope.ANY,
                     new UsernamePasswordCredentials(authData.getLogin(), authData.getPassword()));
@@ -287,15 +287,17 @@ public class GerritRestClient {
             httpContext.setAttribute(PREEMPTIVE_AUTH, basicAuth);
             client.addInterceptorFirst(new PreemptiveAuthHttpRequestInterceptor(authData));
         }
+        */
 
         c.networkInterceptors().add(new UserAgentInterceptor());
         c.setAuthenticator(new MainAuthenticator(authData));
 
+        /*
         for (HttpClientBuilderExtension httpClientBuilderExtension : httpClientBuilderExtensions) {
             client = httpClientBuilderExtension.extend(client, authData);
             credentialsProvider = httpClientBuilderExtension.extendCredentialProvider(client, credentialsProvider, authData);
         }
-
+        */
         return c;
     }
 
@@ -414,11 +416,11 @@ public class GerritRestClient {
         private Authenticator getAuthenticator(List<Challenge> challenges) {
             Authenticator authentator = null;
             Iterator iterator = challenges.iterator();
-            while (iterator.hasNext() && authentator != null) {
+            while (iterator.hasNext() && authentator == null) {
                 Challenge challenge = (Challenge) iterator.next();
-                if ("Basic".equals(challenge.getScheme())) {
+                if ("basic".equals(challenge.getScheme())) {
                     authentator = new BasicAuthenticator(authData);
-                } else if ("Digest".equals(challenge.getScheme())) {
+                } else if ("digest".equals(challenge.getScheme())) {
                     authentator = new DigestAuthenticator(authData);
                 }
             }
