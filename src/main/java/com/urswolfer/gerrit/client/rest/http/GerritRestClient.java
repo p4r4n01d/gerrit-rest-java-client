@@ -32,12 +32,8 @@ import com.urswolfer.gerrit.client.rest.gson.DateSerializer;
 import org.apache.http.*;
 import org.apache.http.auth.*;
 import org.apache.http.auth.Credentials;
-import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.protocol.HttpClientContext;
-import org.apache.http.impl.auth.BasicScheme;
 import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.client.HttpClients;
 import org.apache.http.protocol.HttpContext;
 
 import java.io.IOException;
@@ -47,6 +43,7 @@ import java.io.Reader;
 import java.net.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 
@@ -241,10 +238,11 @@ public class GerritRestClient {
             Optional<HttpCookie> gerritAccountCookie = findGerritAccountCookie();
             if (gerritAccountCookie.isPresent()) {
                 // TODO
-                /*Matcher matcher = GERRIT_AUTH_PATTERN.matcher(EntityUtils.toString(loginResponse.getEntity(), Consts.UTF_8));
+                String responseBody = loginResponse.body().string();
+                Matcher matcher = GERRIT_AUTH_PATTERN.matcher(responseBody);
                 if (matcher.find()) {
                     return Optional.of(matcher.group(1));
-                }*/
+                }
             }
         }
         return Optional.absent();
@@ -418,9 +416,10 @@ public class GerritRestClient {
             Iterator iterator = challenges.iterator();
             while (iterator.hasNext() && authentator == null) {
                 Challenge challenge = (Challenge) iterator.next();
-                if ("basic".equals(challenge.getScheme())) {
+                String scheme = challenge.getScheme().toLowerCase(Locale.ENGLISH);
+                if ("basic".equals(scheme)) {
                     authentator = new BasicAuthenticator(authData);
-                } else if ("digest".equals(challenge.getScheme())) {
+                } else if ("digest".equals(scheme)) {
                     authentator = new DigestAuthenticator(authData);
                 }
             }

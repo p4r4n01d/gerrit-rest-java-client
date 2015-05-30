@@ -287,6 +287,8 @@ public class GerritRestClientTest {
         Truth.assertThat(loginCache.getGerritAuthOptional()).isPresent();
     }
 
+    // What does this do??? Also why does the host support gerrit auth before making a query but not after and why are
+    //  we doing it twice
     @Test
     public void testGerritAuthNotAvailable() throws Exception {
         GerritRestClient gerritRestClient = new GerritRestClient(
