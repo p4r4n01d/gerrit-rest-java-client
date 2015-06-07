@@ -237,7 +237,6 @@ public class GerritRestClient {
         if (loginResponse.code() != 401) {
             Optional<HttpCookie> gerritAccountCookie = findGerritAccountCookie();
             if (gerritAccountCookie.isPresent()) {
-                // TODO
                 String responseBody = loginResponse.body().string();
                 Matcher matcher = GERRIT_AUTH_PATTERN.matcher(responseBody);
                 if (matcher.find()) {
@@ -319,9 +318,9 @@ public class GerritRestClient {
         };
     }
 
+    // Note: This assumes Unix style line endings (\n) to properly remove the Non-Execute Prefix
     private JsonElement parseResponse(InputStream response) throws IOException {
         Reader reader = new InputStreamReader(response, Consts.UTF_8);
-        reader.skip(5);
         try {
             return new JsonParser().parse(reader);
         } catch (JsonSyntaxException jse) {

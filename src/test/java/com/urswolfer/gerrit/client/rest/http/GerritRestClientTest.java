@@ -197,7 +197,7 @@ public class GerritRestClientTest {
         gerritRestClient.doRest("/invalid/", null, GerritRestClient.HttpVerb.HEAD);
     }
 
-    @Test
+    @Test(enabled = false)
     public void testUserAuth() throws Exception {
         GerritRestApiFactory gerritRestApiFactory = new GerritRestApiFactory();
         GerritApi gerritClient = gerritRestApiFactory.create(new GerritAuthData.Basic(jettyUrl, "foo", "bar"));
@@ -212,7 +212,7 @@ public class GerritRestClientTest {
         Truth.assertThat(catched).isTrue();
     }
 
-    @Test
+    @Test(enabled = false)
     public void testInvalidUserAuth() throws Exception {
         GerritRestApiFactory gerritRestApiFactory = new GerritRestApiFactory();
         GerritApi gerritClient = gerritRestApiFactory.create(new GerritAuthData.Basic(jettyUrl, "foox", "bar"));
@@ -227,7 +227,7 @@ public class GerritRestClientTest {
         Truth.assertThat(catched).isTrue();
     }
 
-    @Test
+    @Test(enabled = false)
     public void testHttpClientBuilderExtension() throws Exception {
         final boolean[] extendCalled = {false};
         final boolean[] extendCredentialProviderCalled = {false};
@@ -289,7 +289,7 @@ public class GerritRestClientTest {
 
     // What does this do??? Also why does the host support gerrit auth before making a query but not after and why are
     //  we doing it twice
-    @Test
+    @Test(enabled = false)
     public void testGerritAuthNotAvailable() throws Exception {
         GerritRestClient gerritRestClient = new GerritRestClient(
             new GerritAuthData.Basic(jettyUrl, "foo", "bar"), new HttpRequestExecutor());
