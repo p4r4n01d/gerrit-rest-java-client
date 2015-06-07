@@ -41,6 +41,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.*;
+import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -320,7 +321,7 @@ public class GerritRestClient {
 
     // Note: This assumes Unix style line endings (\n) to properly remove the Non-Execute Prefix
     private JsonElement parseResponse(InputStream response) throws IOException {
-        Reader reader = new InputStreamReader(response, Consts.UTF_8);
+        Reader reader = new InputStreamReader(response, Charset.forName("UTF-8"));
         try {
             return new JsonParser().parse(reader);
         } catch (JsonSyntaxException jse) {
